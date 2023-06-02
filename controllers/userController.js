@@ -448,25 +448,14 @@ exports.updateUser = asyncHandler(async(req, res, next) => {
         user.unit = req.body.unit || unit;
 
         const updatedUser = await user.save();
-        res.status(200).json({
-            _id: updatedUser._id,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
-            otherName: updatedUser.otherName, 
-            email: updatedUser.email,
-            photo: updatedUser.photo,
-            phone: updatedUser.phone,
-            address: updatedUser.address,
-            bio: updatedUser.bio,
-            accountNumber: updatedUser.accountNumber,
-            accountName: updatedUser.accountName,
-            bank: updatedUser.bank,
-            regNumber: updatedUser.regNumber,
-            campus: updatedUser.campus,
-            faculty: updatedUser.faculty,
-            department: updatedUser.department,
-            unit: updatedUser.unit,
-        })
+        if(updatedUser){
+
+        
+        res.status(200).json("Profile Updated Successfully");
+    }else{
+        res.status(404);
+        throw new Error("An error occured, please try again later");
+    }
 
     }else{
         res.status(404);

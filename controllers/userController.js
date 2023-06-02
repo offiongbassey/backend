@@ -7,6 +7,10 @@ const Token = require("../models/tokenModel");
 const crypto = require("crypto");
 const { sendEmail } = require('../utils/sendEmail');
 const RegisterToken = require("../models/registerToken");
+const Order = require("../models/orderModel");
+const Transaction = require("../models/transactionModel");
+const Withdraw = require("../models/withDrawalModel");
+const Product = require("../models/productModel");
 
 //jw token
 const generateToken = (id) => {
@@ -307,9 +311,14 @@ if(!user){
     throw new Error("User not found, please signup");
 }
 //check the status if verified
-if(user.status !== "Active"){
+if(user.status === "Pending"){
     res.status(400);
     throw new Error("Account not verified, kindly verify your account with the link sent to your mail.");
+}
+//check the status if blocked
+if(user.status === "Inactive"){
+    res.status(400);
+    throw new Error("Account disabled, kindly contact the administrator");
 }
 const checkPassword = await bcrypt.compare(password, user.password);
 if(user && checkPassword){
@@ -324,15 +333,17 @@ res.cookie("token", token, {
     secure: false
 });
 
-     const {_id, firstName, lastName, email, photo} = user;
+     const {_id, firstName, lastName, email, photo, role} = user;
      res.status(200).json({
          _id,
          firstName,
          lastName,
          email,
          photo,
-         token
+         token,
+         role
      });
+     
 }else{
     res.status(400);
     throw new Error("Invalid Email or Password");
@@ -350,23 +361,23 @@ res.cookie("token", "", {
 return res.status(200).json({message: "Successfully logged out"});
 });
 
-exports.getUser = asyncHandler(async(req, res, next) => {
-    console.log(`This is id ${req.user._id}`);
-    const user = await User.findById(req.user._id);
-    if(user){
-        const {_id, firstName, lastName, email, photo} = user;
-        res.status(200).json({
-            _id, 
-            firstName,
-            lastName,
-            email,
-            photo
-        })
-    }else{
-        res.status(400);
-        throw new Error("User not found");
-    }
-});
+// exports.getUser = asyncHandler(async(req, res, next) => {
+//     const user = await User.findById(req.user._id);
+//     if(user){
+//         const {_id, firstName, lastName, email, photo} = user;
+//         res.status(200).json({
+//             _id, 
+//             firstName,
+//             lastName,
+//             email,
+//             photo,
+//         })
+//     }else{
+//         res.status(400);
+//         throw new Error("User not found");
+//     }
+// });
+
 
 exports.loginStatus = asyncHandler(async(req, res, next) => {
     const token = req.cookies.token;
@@ -381,22 +392,80 @@ exports.loginStatus = asyncHandler(async(req, res, next) => {
 
 });
 
+exports.getSingleUser = asyncHandler(async(req, res, next) => {
+    const user = await User.findById(req.user._id);
+    if(user){
+        const {_id, firstName, lastName, email, photo, role, phone, address, bio, otherName, accountName, accountNumber, bankStatus, bank, bankCode, bankRecipientCode, bankId, bankVerificationId, regNumber, campus, faculty, department, unit} = user;
+        res.status(200).json({
+            _id, 
+            firstName,
+            lastName,
+            email,
+            photo,
+            role,
+            phone,
+            address,
+            bio, 
+            otherName,
+            accountName,
+            accountNumber,
+            bankStatus,
+            bank,
+            bankCode, 
+            bankRecipientCode, 
+            bankId, 
+            bankVerificationId,
+            regNumber,
+            campus,
+            faculty,
+            department,
+            unit
+            
+        })
+    }else{
+        res.status(400);
+        throw new Error("User not found");
+    }
+});
+
+
 exports.updateUser = asyncHandler(async(req, res, next) => {
     const user = await User.findById(req.user._id);
     if(user){
-        const { firstName, lastName, email, photo} = user;
+        const { firstName, lastName, email, photo, phone, otherName, address, bio, regNumber, campus, faculty, department, unit} = user;
         user.email = email;
         user.firstName = req.body.firstName || firstName;
         user.lastName = req.body.lastName || lastName;
         user.photo = req.body.photo || photo;
+        user.phone = req.body.phone || phone;
+        user.otherName = req.body.otherName || otherName;
+        user.address = req.body.address || address;
+        user.bio = req.body.bio || bio;
+        user.regNumber = req.body.regNumber || regNumber;
+        user.campus = req.body.campus || campus;
+        user.faculty = req.body.faculty || faculty;
+        user.department = req.body.department || department;
+        user.unit = req.body.unit || unit;
 
         const updatedUser = await user.save();
         res.status(200).json({
             _id: updatedUser._id,
             firstName: updatedUser.firstName,
             lastName: updatedUser.lastName,
+            otherName: updatedUser.otherName, 
             email: updatedUser.email,
-            photo: updatedUser.photo
+            photo: updatedUser.photo,
+            phone: updatedUser.phone,
+            address: updatedUser.address,
+            bio: updatedUser.bio,
+            accountNumber: updatedUser.accountNumber,
+            accountName: updatedUser.accountName,
+            bank: updatedUser.bank,
+            regNumber: updatedUser.regNumber,
+            campus: updatedUser.campus,
+            faculty: updatedUser.faculty,
+            department: updatedUser.department,
+            unit: updatedUser.unit,
         })
 
     }else{
@@ -1027,7 +1096,7 @@ exports.confirmEmail = asyncHandler(async(req, res, next) => {
 });
 
 exports.viewStudents = asyncHandler(async(req, res, next) => {
-    const students = await User.find({role: "Student"});
+    const students = await User.find({role: "Student"}).sort("-createdAt");
     if(students){
         res.status(200).json({students});
     }else{
@@ -1059,6 +1128,31 @@ exports.updateStudentStatus = asyncHandler(async(req, res, next) => {
 
     
 });
+exports.updateProductStatus = asyncHandler(async(req, res, next) => {
+    const {url} = req.params;
+    const product = await Product.findOne({url: url});
+    if(!product){
+        res.status(400);
+        throw new Error("Product not identified")
+    }
+    let status = product.status;
+    if(status === "Active"){
+        product.status = "Inactive";
+    }else{
+        product.status = "Active";
+    }
+     const modifyProduct = await product.save();
+    if(modifyProduct){
+        res.status(200).json({message: "Status Successfully modified"});
+    }else{
+        res.status(500);
+        throw new Error("Sorry, an error occured, try again later");
+    }
+
+    
+});
+
+
 
 exports.deleteStudent = asyncHandler(async(req, res, next) => {
     const {studentId} = req.params;
@@ -1078,7 +1172,7 @@ exports.deleteStudent = asyncHandler(async(req, res, next) => {
 
 exports.viewSignleStudent = asyncHandler(async(req, res, next) => {
     const {studentId} = req.params;
-    const student = await User.findById({_id: studentId});
+    const student = await User.findOne({_id: studentId, role: "Student"});
     if(student){
         res.status(200).json({student});
     }else{
@@ -1086,3 +1180,203 @@ exports.viewSignleStudent = asyncHandler(async(req, res, next) => {
         throw new Error("Student not found");
     }
 });
+
+exports.viewLecturers = asyncHandler(async(req, res, next) => {
+const lecturers = await User.find({role: "Lecturer"}).sort("-createdAt");
+if(lecturers){
+    res.status(200).json({lecturers});
+}else{
+    res.status(500);
+    throw new Error("Record not found");
+}
+});
+
+exports.updateLecturerStatus = asyncHandler(async(req, res, next) => {
+    const {lecturerId} = req.params;
+    const lecturer = await User.findById({_id: lecturerId});
+    if(!lecturer){
+        res.status(400);
+        throw new Error("Lecturer not found");
+    }
+    let status = lecturer.status;
+    if(status === 'Active'){
+        lecturer.status = "Inactive";
+    }else{
+        lecturer.status = "Active";
+    }
+    const saveLecturer = await lecturer.save();
+    if(saveLecturer){
+        res.status(200).json({message: "Status Successfully Modified"});
+    }else{
+        res.status(500);
+        throw new Error("An error occured, please try again later");
+    }
+});
+
+exports.deleteLecturer = asyncHandler(async(req, res, next) => {
+    const {lecturerId} = req.params;
+    const lecturer = await User.findById({_id: lecturerId});
+    if(!lecturer){
+        res.status(400);
+        throw new Error("Lecturer not found");
+    }
+    const removeLecturer = await lecturer.deleteOne();
+    if(removeLecturer){
+        res.status(200).json({message: "Lecturer Successfully Deleted"});
+    }else{
+        res.status(500);
+        throw new Error("An error occured, please try again later");
+    }
+});
+
+exports.viewSignleLecturer = asyncHandler(async(req, res, next) => {
+    const {lecturerId} = req.params;
+    const lecturer = await User.findOne({_id: lecturerId, role: "Lecturer"});
+    if(lecturer){
+        res.status(200).json({lecturer});
+    }else{
+        res.status(400);
+        throw new Error("Lecturer not found");
+    }
+    
+
+});
+//admin view orders
+exports.getOrders = asyncHandler(async(req, res, next) => {
+    const orders = await Order.find().populate("userId").populate("author").populate("productId").sort("-createdAt");
+    if(orders){
+        res.status(200).json({orders});
+    }else{
+        res.status(400);
+        throw new Error("Order not found");
+    }
+    
+    });
+    
+    exports.getOrder = asyncHandler(async(req, res, next) => {
+        const {orderId} = req.params;
+        if(!orderId){
+            res.status(400);
+            throw new Error("Order not found");
+        }
+        const order = await Order.findOne({_id: orderId});
+        if(order){
+            res.status(200).json({order});
+            
+        }else{
+            res.status(400);
+            throw new Error("Order not found");
+        }
+        
+    });
+
+    exports.viewTransactions = asyncHandler(async(req, res, next) => {
+        const transactions = await Transaction.find().populate("userId").populate("authorId").sort("-createdAt");
+        if(transactions){
+            res.status(200).json(transactions);
+        }else{
+            res.status(400);
+            throw new Error("No Record Found");
+        }
+    });
+    
+    exports.viewWithdrawals = asyncHandler(async(req, res, next) => {
+        const withdraws = await Withdraw.find().populate("userId").sort("-createdAt");
+        if(withdraws){
+            res.status(200).json(withdraws);
+        }else{
+            res.status(400);
+            throw new Error("No Record Found");
+        }
+    });
+
+    exports.viewUserTransactions = asyncHandler(async(req, res, next) => {
+        const {userId} = req.params;
+        const transactions = await Transaction.find({userId: userId});
+        if(transactions){
+            res.status(200).json(transactions);
+        }else{
+            res.status(400);
+            throw new Error("No Record Found");
+        }
+    });
+    
+
+    
+    exports.viewStudentOrders = asyncHandler(async(req, res, next) => {
+        const {userId} = req.params;
+        const orders = await Order.find({userId: userId});
+        if(orders){
+            res.status(200).json(orders);
+        }else{
+            res.status(400);
+            throw new Error("No Record Found");
+        }
+    });
+    
+
+    exports.viewLecturerOrders = asyncHandler(async(req, res, next) => {
+        const {userId} = req.params;
+        const orders = await Order.find({author: userId});
+        if(orders){
+            res.status(200).json(orders);
+        }else{
+            res.status(400);
+            throw new Error("No Record Found");
+        }
+    });
+    //general receipt
+    
+    exports.viewGeneralReceipt = asyncHandler(async(req, res, next) => {
+        const {transactionCode} = req.params;
+        const transaction = await Transaction.findOne({transactionCode}).populate('userId').populate('productId');
+        if(!transaction){
+            res.status(400);
+            throw new Error("Invalid Transaction Code");    
+        }else{
+            res.status(200).json({transaction});
+            
+        }
+    });
+    
+
+    //get admin dashboard data
+    exports.adminAccountData = asyncHandler(async(req, res, next) => {
+        //get total sum order
+        const sumOrder = await Transaction.aggregate(
+            [
+                {$match: {status: "Successful"}},
+                {$group: {_id: null, amount: {$sum: "$amount"}}}
+            ],
+        )
+            //get total funds withdrawn
+            const fundsWithdrawn = await Withdraw.aggregate(
+                [
+                    {$match: {status: "Successful"}},
+                    {$group: {_id: null, amount: {$sum: "$amount"}}}
+                ]
+            )
+            //get total balance 
+            const totalBalance = await User.aggregate(
+                [
+                    {$match: {}},
+                    {$group: {_id: null, balance: {$sum: "$balance"}}}
+                ]
+            )
+            //count products
+            const totalProducts = await Product.estimatedDocumentCount();
+
+            //count total lecturers
+            const lecturers  = {role: "Lecturer"};
+            const totalLecturers = await User.countDocuments(lecturers);
+            const students = {role: "Student"};
+            const totalStudents = await User.countDocuments(students);
+
+
+        if(sumOrder){
+            return res.status(200).json({sumOrder, fundsWithdrawn, totalBalance, totalProducts, totalLecturers, totalStudents});
+        }
+            res.status(400);
+            throw new Error("An error occured, please try again later");
+        
+    });

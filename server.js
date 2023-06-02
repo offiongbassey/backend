@@ -8,7 +8,12 @@ const cookieParser = require("cookie-parser");
 const campusRoute = require("./routes/campusRoute");
 const facultyRoute = require("./routes/facultyRoute");
 const departmentRoute = require("./routes/departmentRoute");
-
+const studentRoute = require("./routes/sutdentRoute");
+const lecturerRoute = require("./routes/lecturerRoute");
+const productRoute = require("./routes/productRoute");
+const orderRoute = require("./routes/orderRoute");
+const bankRoute = require("./routes/bankRoute");
+const path = require("path");
 
 const userRoute = require("./routes/userRoute");
 
@@ -18,11 +23,23 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({extended: false}));
 app.use(bodyParser.json());
+app.use(cors({
+    origin: ["http://localhost:3000", "https://unicrossforum.com"],
+    credentials: true
+}));
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")))
+ 
 //Routes middleware
 app.use("/api/portal", userRoute);
 app.use("/api/campus", campusRoute);
 app.use("/api/faculty", facultyRoute);
 app.use("/api/department", departmentRoute);
+app.use("/api/student", studentRoute);
+app.use("/api/lecturer", lecturerRoute);
+app.use("/api/products", productRoute);
+app.use("/api/orders", orderRoute);
+app.use("/api/bank", bankRoute);
 
 //Routes
 app.get("/", (req, res, next) => {

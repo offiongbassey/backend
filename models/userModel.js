@@ -43,7 +43,7 @@ const userSchema = new Schema({
         maxLength: [1000, "Bio must not be more than 1000 characters"],
         default: ''
     },
-    token: {
+    updateStatus: {
         type: String,
         default: ''
     },
@@ -57,37 +57,73 @@ const userSchema = new Schema({
     },
     address: {
         type: String,
+        default: ""
     },
     regNumber: {
         type: String,
+        default: ""
     },
     campus: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Campus",
+        default: null
     },
     faculty: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Faculty",
+        default: null
     }, 
     department: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Department",
+        default: null
     },
     unit: {
-        type: String
+        type: String,
+        default: ""
     },
     walletPin: {
-        type: String
+        type: String,
+        default: ""
     },
     accountNumber: {
-        type: String
+        type: Number,
+        default: ""
     },
     accountName: {
-        type: String
+        type: String,
+        default: ""
     },
     bank: {
-        type: String
+        type: String,
+        default: ""
     },
     balance: {
-        type: String
+        type: Number,
+        default: 0
+    },
+    bankId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Bank",
+        default: null
+    },
+    bankStatus: {
+        type: String,
+        default: "Inactive"
+    },
+    bankVerificationId: {
+        type: Number,
+        default: ""
+    },
+    bankRecipientCode: {
+        type: String,
+        default: ""
+    },
+    bankCode: {
+        type: String,
+        default: 0
     }
+
 
 
 }, {

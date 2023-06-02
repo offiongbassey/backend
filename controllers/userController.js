@@ -351,6 +351,7 @@ return res.status(200).json({message: "Successfully logged out"});
 });
 
 exports.getUser = asyncHandler(async(req, res, next) => {
+    console.log(`This is id ${req.user._id}`);
     const user = await User.findById(req.user._id);
     if(user){
         const {_id, firstName, lastName, email, photo} = user;
@@ -1023,4 +1024,65 @@ exports.confirmEmail = asyncHandler(async(req, res, next) => {
 
   await user.save();
   res.status(200).json({message: "Account successfully verified, please login"});
+});
+
+exports.viewStudents = asyncHandler(async(req, res, next) => {
+    const students = await User.find({role: "Student"});
+    if(students){
+        res.status(200).json({students});
+    }else{
+        res.status(404);
+        throw new Error("Record not found");
+    }
+});
+
+exports.updateStudentStatus = asyncHandler(async(req, res, next) => {
+    const {studentId} = req.params;
+    const student = await User.findById({_id: studentId});
+    if(!student){
+        res.status(400);
+        throw new Error("Student not identified")
+    }
+    let status = student.status;
+    if(status === "Active"){
+        student.status = "Inactive";
+    }else{
+        student.status = "Active";
+    }
+     const modifyStudent = await student.save();
+    if(modifyStudent){
+        res.status(200).json({message: "Status Successfully modified"});
+    }else{
+        res.status(500);
+        throw new Error("Sorry, an error occured, try again later");
+    }
+
+    
+});
+
+exports.deleteStudent = asyncHandler(async(req, res, next) => {
+    const {studentId} = req.params;
+    const student = await User.findById({_id: studentId});
+    if(!student){
+        res.status(400);
+        throw new Error("Student not identified");
+    }
+    const removeStudent = student.deleteOne();
+    if(removeStudent){
+        res.status(200).json({message: "Student successfully deleted"});
+    }else{
+        res.status(500);
+        throw new Error("Sorry, an error occured, try again later");
+    }
+});
+
+exports.viewSignleStudent = asyncHandler(async(req, res, next) => {
+    const {studentId} = req.params;
+    const student = await User.findById({_id: studentId});
+    if(student){
+        res.status(200).json({student});
+    }else{
+        res.status(400);
+        throw new Error("Student not found");
+    }
 });
